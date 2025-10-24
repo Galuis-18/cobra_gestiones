@@ -192,14 +192,9 @@ def generate_report(uploaded_file):
     return doc_buffer.getvalue()
 
 # --- 3. INTERFAZ DE USUARIO DE STREAMLIT ---
-
-st.set_page_config(page_title="Generador de Reportes", layout="centered")
-st.title("Generador de Reporte de Gestiones 📊📄")
-st.write("Sube el archivo Excel de 'Gestiones APP' para generar el análisis de tiempos y montos por cobrador.")
-
 # Widget para subir el archivo
 st.set_page_config(page_title="Generador de Reportes", layout="centered")
-st.title("Generador de Reporte de Gestiones 📊📄")
+st.title("Generador de Reporte de Gestiones 📄")
 st.write("Sube el archivo Excel de 'Gestiones APP' para generar el análisis de tiempos y montos por cobrador.")
 
 # Widget para subir el archivo

@@ -194,27 +194,94 @@ st.title("Generador de Reporte de Gestiones 📊📄")
 st.write("Sube el archivo Excel de 'Gestiones APP' para generar el análisis de tiempos y montos por cobrador.")
 
 # Widget para subir el archivo
+st.set_page_config(page_title="Generador de Reportes", layout="centered")
+st.title("Generador de Reporte de Gestiones 📊📄")
+st.write("Sube el archivo Excel de 'Gestiones APP' para generar el análisis de tiempos y montos por cobrador.")
+
+# Widget para subir el archivo
 uploaded_file = st.file_uploader("Selecciona tu archivo .xlsx", type=["xlsx"])
 
+# --- NUEVA LÓGICA DE INTERFAZ ---
 if uploaded_file is not None:
-    # Si el usuario sube un archivo, mostramos un "spinner" mientras se procesa
-    with st.spinner("Generando reporte... Esto puede tardar unos segundos... ⏳"):
-        try:
-            # Llamamos a la función que procesa todo
-            report_bytes = generate_report(uploaded_file)
-            
-            st.success("Reporte generado")
-            
-            # Crear el botón de descarga
-            st.download_button(
-                label="Descargar Reporte",
-                data=report_bytes, # Los bytes del archivo en memoria
-                file_name="Reporte_Tiempos_Cobradores.docx", # Nombre del archivo
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document" # Tipo MIME para .docx
-            )
+    
+    # 1. Opción para elegir el formato
+    st.write("") # Espacio
+    format_choice = st.radio(
+        "Elige el formato de descarga:",
+        ("Word (.docx)", "PDF (.pdf)"),
+        horizontal=True
+    )
+    st.write("") # Espacio
+    
+    # 2. Botón para generar (o se podría hacer automático)
+    if st.button("Generar Reporte 🚀"):
+        
+        with st.spinner("Procesando archivo... Esto puede tardar unos segundos... ⏳"):
+            try:
+                # 3. Siempre generamos el .docx primero
+                docx_bytes = generate_report(uploaded_file)
+                st.success("¡Reporte procesado con éxito! 🎉")
 
-        except Exception as e:
-            # Si algo falla en 'generate_report', mostramos el error
-            st.error(f"Ocurrió un error al procesar el archivo:")
-            st.error(e)
-            st.warning("Por favor, verifica que el archivo tenga el formato correcto y que contenga las columnas: 'Fecha', 'No. de Cobrador', 'No. de Contrato' y 'Monto'.")
+                # 4. Lógica de descarga
+                if format_choice == "Word (.docx)":
+                    st.download_button(
+                        label="Descargar Reporte (.docx) 📥",
+                        data=docx_bytes,
+                        file_name="Reporte_Tiempos_Cobradores.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+
+                elif format_choice == "PDF (.pdf)":
+                    with st.spinner("Convirtiendo a PDF... (Esto puede tardar un poco más) 🔄"):
+                        # Para convertir, necesitamos guardar el .docx temporalmente
+                        
+                        pdf_bytes = None
+                        try:
+                            # Crear un archivo temporal .docx
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as temp_docx:
+                                temp_docx.write(docx_bytes)
+                                temp_docx_path = temp_docx.name
+                            
+                            # Definir la ruta de salida del PDF
+                            temp_pdf_path = temp_docx_path.replace(".docx", ".pdf")
+                            
+                            # Realizar la conversión
+                            convert(temp_docx_path, temp_pdf_path)
+                            
+                            # Leer los bytes del PDF generado
+                            with open(temp_pdf_path, "rb") as f:
+                                pdf_bytes = f.read()
+                            
+                            # Limpiar archivos temporales
+                            os.remove(temp_docx_path)
+                            os.remove(temp_pdf_path)
+
+                            # Mostrar botón de descarga de PDF
+                            st.download_button(
+                                label="Descargar Reporte (.pdf) 📥",
+                                data=pdf_bytes,
+                                file_name="Reporte_Tiempos_Cobradores.pdf",
+                                mime="application/pdf"
+                            )
+
+                        except Exception as convert_error:
+                            st.error(f"Error durante la conversión a PDF: {convert_error}")
+                            st.info("La conversión a PDF falló, pero puedes descargar la versión .docx:")
+                            # Fallback al botón de .docx
+                            st.download_button(
+                                label="Descargar Reporte (.docx) 📥",
+                                data=docx_bytes,
+                                file_name="Reporte_Tiempos_Cobradores.docx",
+                                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            )
+                        finally:
+                            # Asegurarse de limpiar en caso de error
+                            if 'temp_docx_path' in locals() and os.path.exists(temp_docx_path):
+                                os.remove(temp_docx_path)
+                            if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
+                                os.remove(temp_pdf_path)
+
+            except Exception as e:
+                st.error(f"❌ Ocurrió un error al procesar el archivo:")
+                st.error(e)
+                st.warning("Por favor, verifica el formato del archivo y las columnas requeridas.")

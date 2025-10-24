@@ -9,7 +9,8 @@ import os
 from docx import Document
 from docx.shared import Inches  
 import warnings
-from docx2pdf import convert
+import subprocess
+#from docx2pdf import convert
 
 ## Funciones viva españa
 def fetch_date(texto):
@@ -234,32 +235,55 @@ if uploaded_file is not None:
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
 
-                elif format_choice == "PDF (.pdf)":
+               elif format_choice == "PDF (.pdf)":
                     with st.spinner("Convirtiendo a PDF... (Esto puede tardar un poco más) 🔄"):
-                        # Para convertir, necesitamos guardar el .docx temporalmente
                         
                         pdf_bytes = None
-                        try:
-                            # Crear un archivo temporal .docx
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as temp_docx:
-                                temp_docx.write(docx_bytes)
-                                temp_docx_path = temp_docx.name
-                            
-                            # Definir la ruta de salida del PDF
-                            temp_pdf_path = temp_docx_path.replace(".docx", ".pdf")
-                            
-                            # Realizar la conversión
-                            convert(temp_docx_path, temp_pdf_path)
-                            
-                            # Leer los bytes del PDF generado
-                            with open(temp_pdf_path, "rb") as f:
-                                pdf_bytes = f.read()
-                            
-                            # Limpiar archivos temporales
-                            os.remove(temp_docx_path)
-                            os.remove(temp_pdf_path)
+                        temp_docx_path = None
+                        temp_pdf_dir = None
 
-                            # Mostrar botón de descarga de PDF
+                        try:
+                            # 1. Crear un directorio temporal para la salida
+                            with tempfile.TemporaryDirectory() as temp_pdf_dir:
+                                
+                                # 2. Crear un archivo .docx temporal
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as temp_docx:
+                                    temp_docx.write(docx_bytes)
+                                    temp_docx_path = temp_docx.name
+
+                                # 3. Construir el comando de LibreOffice
+                                # Esto le dice a libreoffice que convierta el docx a pdf
+                                # y guarde el resultado en el directorio temporal
+                                command = [
+                                    "libreoffice",
+                                    "--headless",
+                                    "--convert-to", "pdf",
+                                    "--outdir", temp_pdf_dir,
+                                    temp_docx_path
+                                ]
+                                
+                                # 4. Ejecutar el comando
+                                result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+
+                                # 5. Revisar si hubo errores
+                                if result.returncode != 0:
+                                    st.error("Error durante la conversión con LibreOffice:")
+                                    st.code(result.stderr) # Muestra el error
+                                    raise Exception(f"Fallo de LibreOffice: {result.stderr}")
+
+                                # 6. Encontrar el archivo PDF de salida
+                                # El PDF tendrá el mismo nombre que el .docx
+                                pdf_filename = os.path.basename(temp_docx_path).replace(".docx", ".pdf")
+                                temp_pdf_path = os.path.join(temp_pdf_dir, pdf_filename)
+
+                                if not os.path.exists(temp_pdf_path):
+                                    raise Exception("El archivo PDF no fue generado por LibreOffice.")
+
+                                # 7. Leer los bytes del PDF generado
+                                with open(temp_pdf_path, "rb") as f:
+                                    pdf_bytes = f.read()
+
+                            # 8. Mostrar el botón de descarga
                             st.download_button(
                                 label="Descargar Reporte (.pdf) 📥",
                                 data=pdf_bytes,
@@ -278,11 +302,9 @@ if uploaded_file is not None:
                                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                             )
                         finally:
-                            # Asegurarse de limpiar en caso de error
-                            if 'temp_docx_path' in locals() and os.path.exists(temp_docx_path):
+                            # 9. Asegurarse de limpiar el archivo .docx
+                            if temp_docx_path and os.path.exists(temp_docx_path):
                                 os.remove(temp_docx_path)
-                            if 'temp_pdf_path' in locals() and os.path.exists(temp_pdf_path):
-                                os.remove(temp_pdf_path)
 
             except Exception as e:
                 st.error(f"❌ Ocurrió un error al procesar el archivo:")

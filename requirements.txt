@@ -5,5 +5,3 @@ seaborn
 numpy
 python-docx
 openpyxl
-docx2pdf
-

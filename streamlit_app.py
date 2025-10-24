@@ -235,7 +235,7 @@ if uploaded_file is not None:
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
 
-               elif format_choice == "PDF (.pdf)":
+                elif format_choice == "PDF (.pdf)":
                     with st.spinner("Convirtiendo a PDF... (Esto puede tardar un poco más) 🔄"):
                         
                         pdf_bytes = None

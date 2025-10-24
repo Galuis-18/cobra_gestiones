@@ -9,6 +9,7 @@ import os
 from docx import Document
 from docx.shared import Inches  
 import warnings
+from docx2pdf import convert
 
 ## Funciones viva españa
 def fetch_date(texto):
